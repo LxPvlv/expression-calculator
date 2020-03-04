@@ -34,52 +34,48 @@ function expressionCalculator(expr) {
     .replace(/ +/g, "")
     .split("")
     .forEach(s => {
-      const n = s.match(/\d/);
-      if (n) {
-        num += n[0];
+      if (/\d/.test(s)) {
+        num += s;
         return;
       }
 
-      if (num && level.op && level.op.match(/[\+\-]/)) {
-        if (level.op[0] === "-") num *= -1;
-        level.nums.push(Number(num));
-        level.op = null;
-        num = "";
-      }
-
-      if (num && level.op && level.op.match(/[\*\/]/)) {
-        level.nums[level.nums.length - 1] = calc(
-          level.nums[level.nums.length - 1],
-          Number(num),
-          level.op
-        );
-        level.op = null;
-        num = "";
-      }
-
       if (num) {
-        level.nums.push(Number(num));
+        switch (level.op) {
+          case "-":
+            num *= -1;
+          case "+":
+            level.nums.push(Number(num));
+            break;
+          case "*":
+          case "/":
+            const last = level.nums.length - 1;
+            level.nums[last] = calc(level.nums[last], Number(num), level.op);
+            break;
+          default:
+            level.nums.push(Number(num));
+        }
+
+        level.op = null;
         num = "";
       }
 
-      const x = s.match(/[\*\/\+\-]/);
-      if (x) {
+      if (/[\*\/\+\-]/.test(s)) {
         level.op = s;
         return;
       }
 
-      if (s.match(/\(/)) {
+      if (s === "(") {
         level = new Level(level);
         bracketsCounter++;
         return;
       }
 
-      if (s.match(/\)/)) {
+      if (s === ")") {
+        if (--bracketsCounter < 0)
+          throw new Error("ExpressionError: Brackets must be paired");
+
         num = level.nums.reduce((sum, it) => sum + it);
         level = level.prev;
-        bracketsCounter--;
-        if (bracketsCounter < 0)
-          throw new Error("ExpressionError: Brackets must be paired");
         return;
       }
     });
@@ -87,11 +83,8 @@ function expressionCalculator(expr) {
   if (bracketsCounter !== 0)
     throw new Error("ExpressionError: Brackets must be paired");
 
-  level.nums[level.nums.length - 1] = calc(
-    level.nums[level.nums.length - 1],
-    Number(num),
-    level.op
-  );
+  const last = level.nums.length - 1;
+  level.nums[last] = calc(level.nums[last], Number(num), level.op);
 
   return level.nums.reduce((sum, it) => sum + it);
 }
